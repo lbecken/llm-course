@@ -1,0 +1,35 @@
+[project]
+name = "modern-llm-engineering"
+version = "0.1.0"
+description = "Modern LLM Engineering: From Transformer Foundations to Reasoning and Agentic Systems — course code"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+# The course package deliberately has a tiny dependency footprint so that every
+# Tier A lab and the whole test-suite run on a CPU-only laptop or CI runner.
+# nanochat itself is NOT a dependency: it lives in external/nanochat at a pinned
+# commit with its own lockfile (see docs/upstream-version.md).
+dependencies = [
+    "torch>=2.2",
+    "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+plots = ["matplotlib>=3.8"]
+dev = ["pytest>=8.0", "matplotlib>=3.8"]
+
+[build-system]
+requires = ["setuptools>=65"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["mlle*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "slow: longer CPU tests (deselect with -m 'not slow')",
+    "nanochat: needs the pinned nanochat checkout in external/nanochat and its dependencies",
+    "gpu: needs a CUDA device; never run in CI",
+]
+addopts = "-q"

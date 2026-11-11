@@ -1,0 +1,20 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ipynb_checkpoints/
+# the pinned upstream checkout lives here, never committed
+external/
+# learner outputs: runs, checkpoints, plots (templates and reference results are tracked)
+results/runs/
+results/*.jsonl
+results/*.png
+runs/
+*.pt
+*.ckpt
+wandb/
+.DS_Store
