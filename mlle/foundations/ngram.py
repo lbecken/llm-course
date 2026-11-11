@@ -40,11 +40,14 @@ class CharTokenizer:
 
 
 class NGramLM:
-    """n-gram model over integer tokens with add-alpha smoothing.
+    """n-gram model over integer tokens with add-alpha smoothing and back-off.
 
     `order` is the number of tokens of context: 0 = unigram, 1 = bigram, 2 = trigram ...
     Smoothing adds `alpha` pseudo-counts to every possible next token so that unseen
-    events get non-zero probability (otherwise one unseen pair makes the loss infinite)."""
+    events get non-zero probability (otherwise one unseen pair makes the loss infinite).
+    Back-off: if a context was never seen in training, drop its oldest token and try
+    again, down to the unigram distribution. Both are classic answers to the central
+    weakness of counting: most long contexts never occur in any finite corpus."""
 
     def __init__(self, order: int, vocab_size: int, alpha: float = 0.01):
         self.order = order
@@ -54,13 +57,19 @@ class NGramLM:
 
     def fit(self, tokens: list[int]) -> "NGramLM":
         for t in range(len(tokens)):
-            context = tuple(tokens[max(0, t - self.order) : t])
-            self.counts[context][tokens[t]] += 1
+            for n in range(0, min(self.order, t) + 1):  # every context length up to `order`
+                self.counts[tuple(tokens[t - n : t])][tokens[t]] += 1
         return self
+
+    def num_contexts(self) -> int:
+        """Number of distinct full-length contexts observed in training."""
+        return sum(1 for c in self.counts if len(c) == self.order)
 
     def probs(self, context: list[int]) -> torch.Tensor:
         """Distribution over the next token, shape (vocab_size,)."""
         context = tuple(context[-self.order :]) if self.order > 0 else ()
+        while context and context not in self.counts:
+            context = context[1:]  # back off to a shorter context
         counter = self.counts.get(context, {})
         p = torch.full((self.vocab_size,), self.alpha, dtype=torch.float64)
         for tok, c in counter.items():
