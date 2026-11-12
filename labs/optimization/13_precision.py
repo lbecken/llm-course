@@ -15,6 +15,7 @@ and mantissa bits.
 """
 
 import argparse
+import math
 
 import torch
 
@@ -32,7 +33,7 @@ print("1. formats")
 print(f"{'dtype':>14} {'bits':>5} {'largest value':>15} {'spacing at 1.0 (eps)':>21} {'~decimal digits':>16}")
 for dt in (torch.float32, torch.float16, torch.bfloat16):
     fi = torch.finfo(dt)
-    print(f"{str(dt).replace('torch.', ''):>14} {fi.bits:>5} {fi.max:>15.3e} {fi.eps:>21.3e} {fi.precision:>16}")
+    print(f"{str(dt).replace('torch.', ''):>14} {fi.bits:>5} {fi.max:>15.3e} {fi.eps:>21.3e} {int(-math.log10(fi.eps)):>16}")
 for name in ("float8_e4m3fn", "float8_e5m2"):
     if hasattr(torch, name):
         fi = torch.finfo(getattr(torch, name))

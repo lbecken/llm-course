@@ -53,11 +53,40 @@ class CudaPeakMemory:
             self.bytes = torch.cuda.max_memory_allocated(self.device)
 
 
+def _proc_status_kib(field: str) -> int | None:
+    try:
+        with open("/proc/self/status") as f:
+            for line in f:
+                if line.startswith(field + ":"):
+                    return int(line.split()[1])
+    except OSError:
+        pass
+    return None
+
+
 def peak_rss_bytes() -> int:
-    """Peak resident memory of THIS process so far. A high-water mark: to compare two
-    configurations, run each in its own process (labs do this with subprocess)."""
+    """Peak resident memory of this process (since start, or since `reset_peak_rss`)."""
+    hwm = _proc_status_kib("VmHWM")
+    if hwm is not None:
+        return hwm * 1024
     rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-    return rss if sys.platform == "darwin" else rss * 1024  # Linux reports kilobytes
+    return rss if sys.platform == "darwin" else rss * 1024
+
+
+def current_rss_bytes() -> int:
+    rss = _proc_status_kib("VmRSS")
+    return rss * 1024 if rss is not None else peak_rss_bytes()
+
+
+def reset_peak_rss() -> bool:
+    """Reset the kernel's peak-RSS counter for this process (Linux). Returns False where unsupported;
+    then `peak_rss_bytes` reports the peak since process start, so use one process per measurement."""
+    try:
+        with open("/proc/self/clear_refs", "w") as f:
+            f.write("5")
+        return True
+    except OSError:
+        return False
 
 
 def record(name: str, **fields) -> dict:

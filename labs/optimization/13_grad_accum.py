@@ -21,7 +21,7 @@ import time
 import torch
 from torch.utils.checkpoint import checkpoint
 
-from mlle.bench.harness import peak_rss_bytes
+from mlle.bench.harness import current_rss_bytes, peak_rss_bytes, reset_peak_rss
 from mlle.foundations.minigpt import MiniGPT, MiniGPTConfig
 
 ap = argparse.ArgumentParser()
@@ -44,14 +44,18 @@ if args.worker:  # ---- subprocess: one configuration, report peak memory and ti
             inner = block.forward
             block.forward = lambda x, cache=None, record=False, _f=inner: checkpoint(_f, x, use_reentrant=False)
     opt = torch.optim.AdamW(model.parameters(), lr=1e-3)
-    base = peak_rss_bytes()
     x = torch.randint(0, 1024, (batch, 256))
+    opt.zero_grad(set_to_none=True)
+    model(x[:1], x[:1]).backward()  # tiny warm-up step: allocates gradients and optimizer state
+    opt.step()
+    reset_peak_rss()
+    base = current_rss_bytes()
     t0 = time.perf_counter()
     for _ in range(2):
         opt.zero_grad(set_to_none=True)
         model(x, x).backward()
         opt.step()
-    print(f"{peak_rss_bytes() - base} {(time.perf_counter() - t0) / 2}")
+    print(f"{max(0, peak_rss_bytes() - base)} {(time.perf_counter() - t0) / 2}")
     sys.exit(0)
 
 # %% 1. Accumulation equals one large batch
@@ -76,7 +80,7 @@ print(f"   weights {n * 4 / 2**20:6.1f} MiB | gradients {n * 4 / 2**20:6.1f} MiB
 c = model.config
 per_token_acts = c.n_layer * (c.n_embd * 12 + c.n_head * c.block_size * 2)  # rough: stream, q/k/v, 4C hidden, attention rows
 print(f"   activations kept for backward: roughly {per_token_acts * 4 / 2**10:.0f} KiB per token of the batch (grows with batch x sequence x layers)")
-print(f"\n   measured peak process memory above the idle model (each configuration in its own process):")
+print(f"\n   measured peak process memory during a training step, above the level before it (one process per configuration):")
 print(f"{'batch':>8} {'tokens':>8} {'plain MiB':>10} {'s/step':>8} {'checkpointed MiB':>17} {'s/step':>8}")
 for batch in (2, 8, 32):
     row = []
