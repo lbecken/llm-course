@@ -78,6 +78,10 @@ def generate_cached(model, idx: torch.Tensor, max_new_tokens: int, temperature: 
     Phase 1 (prefill): run the whole prompt once, filling the cache.
     Phase 2 (decode):  feed only the newest token; attention reads the past from the cache."""
     B, T0 = idx.shape
+    assert T0 + max_new_tokens <= model.config.block_size, (
+        "cached generation cannot run past block_size: the cache has no eviction. "
+        "Use MiniGPT.generate (sliding window, no cache) for longer outputs."
+    )
     cache = KVCache.for_model(model, B, max_len=T0 + max_new_tokens)
     logits = model(idx, cache=cache)[:, -1, :]  # prefill
     for _ in range(max_new_tokens):

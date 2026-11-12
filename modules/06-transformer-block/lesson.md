@@ -74,6 +74,12 @@ the network; the second term adds each layer's local contribution. Without the i
 the gradient at layer 1 would be a product of $L$ Jacobians, which is what made deep
 plain networks untrainable.
 
+Both views matter, and the lab separates them: in a small pre-norm model, removing the
+residual connections does *not* make gradients vanish at initialisation (normalization
+keeps their scale), yet training collapses at a learning rate the residual model handles
+easily and is several times slower at smaller rates. With normalization present, the
+forward property (each block edits a state that already works) is doing most of the work.
+
 ### D.2 Normalization
 
 Activations drift in scale as layers add to the stream and as weights change during

@@ -26,11 +26,13 @@ Reference numbers are in the lab (three seeds each). Reading them:
 | Variant | mean | verdict |
 |---|---:|---|
 | baseline | 0.370 | seed spread ≈ ±0.003 |
-| **no residual** | **2.70** | catastrophic: barely better than the unigram model (2.75). The stack does not train at this learning rate without the identity path. |
+| **no residual** | **2.70** | catastrophic: at or near the unigram loss (2.75). At this learning rate (3e-3) the model collapses and never recovers. Follow-up runs by the author: at lr 1e-3 it reaches 0.77 after 2 000 steps and at 3e-4 0.98, against 0.35 for the residual model after 600. So the network *can* learn without residuals, but only with a much smaller step size and far more slowly. |
 | post-norm | 0.398 | clearly worse (+0.028, ten times the seed spread) at equal steps |
 | ReLU² | 0.355 | clearly *better* than GELU here (−0.015) |
 | RMSNorm | 0.374 | within about one seed spread of the baseline: no reliable difference |
 | no MLP | 0.447 | clearly worse, and noisier across seeds: attention can move information but the model cannot compute enough with it |
+
+Note what this does and does not show. Gradient norms at initialisation are similar with and without residual connections in this pre-norm model (Module 07, Exercise 5), so "vanishing gradients" is not the explanation here; that argument applies to deep plain networks *without* normalization. What the residual path provides in this experiment is robustness and speed: each block starts as a small edit to a state that already carries the token's identity, instead of having to re-transmit everything through attention's averaging and the MLP.
 
 So H3 holds: the structural elements (residual path, MLP) matter by an order of magnitude
 more than the choice of activation or normalization. Limitations to state with these

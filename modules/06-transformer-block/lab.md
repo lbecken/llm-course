@@ -120,5 +120,5 @@ Your measurements:
 **Questions to answer in writing**
 
 1. Which ablations produced differences larger than the seed spread?
-2. A 2-layer model may tolerate removing residual connections better than a 12-layer one. Explain why, using the product-of-Jacobians argument.
+2. The 2-layer model without residual connections fails at this learning rate although (as Module 07, Exercise 5 measures) its gradients do not vanish at initialisation. At lower learning rates it trains, slowly. Which of the two arguments for residual connections (forward: "propose an edit"; backward: "identity path for the gradient") do these observations speak to, and what would you measure next?
 3. What exactly does the parity result prove, and what does it not prove (think: training dynamics, performance, the kernels used on a GPU)?
