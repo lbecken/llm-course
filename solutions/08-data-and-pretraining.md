@@ -36,13 +36,25 @@ training data and misses paraphrase.
 
 ### Exercise 5: a controlled data experiment
 
-Expected pattern (your exact values will differ; see the lab table for the author's when available):
+Measured by the author with the unmodified nanochat scripts (CPU, 2026-11-12):
 
-- **A** (ample data): train and validation bpb nearly equal, `epoch: 1` or 2.
-- **B** (600 documents, 300 steps): slightly worse validation than A at equal steps; the loader passes through the data many times (`epoch` in the tens), but 300 steps are too few to memorise.
-- **C** (600 documents, 3 000 steps): training bpb falls *below the entropy floor* (0.4528), which is the signature of memorisation, while validation bpb is no better than, or worse than, B. The `epoch` counter in the hundreds is the early warning.
+| Condition | train bpb | validation bpb | `epoch` at the end |
+|---|---:|---:|---:|
+| A: 12 000 documents, 300 steps | 0.4644 | 0.4664 | 2 |
+| B: 600 documents, 300 steps | 0.4453 | 0.4851 | 28 |
+| C: 600 documents, 3 000 steps | 0.3393 | 1.5932 | 271 |
 
-The log field that warns of overfitting before any validation number: `epoch`.
+- **A** (ample data): train and validation agree to 0.002. No overfitting.
+- **B**: the same number of steps on 5 % of the data. The model has already seen every document 28 times; training bpb is slightly *below the entropy floor* (0.4453 < 0.4528) and validation is 0.04 worse than train. Early memorisation.
+- **C**: ten times more steps on the same 600 documents. Training bpb 0.34, far below the floor, which no honest predictor of fresh Pocket text can reach: the model is reciting. Validation bpb is 1.59, more than three times worse than A. In C's log, validation was best at step 200 (0.475) and then rose monotonically (0.515, 0.587, 0.697, 0.832, …).
+
+How to tell from the log alone: (i) `epoch` climbing into the tens and hundreds; (ii) the
+training loss dropping below any value the validation loss ever reached; (iii) validation
+bpb rising while training loss falls. The first is visible before any evaluation runs.
+
+Also note the printed plan of run C: `Tokens : Scaling params ratio: 27.77`. The script
+told you at start-up that this run would train far beyond its compute-optimal horizon
+(12) for this model, on a dataset much smaller than that horizon.
 
 ### Exercise 6
 

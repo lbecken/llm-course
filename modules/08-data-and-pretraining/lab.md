@@ -122,6 +122,16 @@ Reference values (author, CPU): see the lesson (D.2, D.3) and
 | median tokens/s (compiled) | 40.6 k | |
 | total wall time (compiled / not compiled) | 80 s / 24 s | |
 
+Reference for Exercise 5 (author, CPU, 2026-11-12; entropy floor 0.4528 bits per byte):
+
+| Condition | train bpb | validation bpb | last `epoch` in the log |
+|---|---:|---:|---:|
+| A: 12 000 docs, 300 steps | 0.4644 | 0.4664 | 2 |
+| B: 600 docs, 300 steps | 0.4453 | 0.4851 | 28 |
+| C: 600 docs, 3 000 steps | **0.3393** | **1.5932** | 271 |
+
+Your measurements:
+
 | Exercise 5 | train bpb | validation bpb | epochs seen |
 |---|---:|---:|---:|
 | A: 12 000 docs, 300 steps | | | |

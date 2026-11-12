@@ -67,6 +67,22 @@ the small robots robots wait .
 Agreement across relative clauses is right in the samples inspected; the last line shows
 a remaining error (a repeated noun, which the grammar never produces).
 
+## Overfitting, with the real pipeline
+
+Same commands on a dataset of only 600 documents
+(`python scripts/experiments/make_local_dataset.py --num-docs 600 --row-group-size 64`,
+separate `NANOCHAT_BASE_DIR`, tokenizer retrained), measured 2026-11-12:
+
+| Condition | train bpb | validation bpb | `epoch` at the end |
+|---|---:|---:|---:|
+| 12 000 documents, 300 steps (the run above) | 0.4644 | 0.4664 | 2 |
+| 600 documents, 300 steps | 0.4453 | 0.4851 | 28 |
+| 600 documents, 3 000 steps (`STEPS=3000`) | 0.3393 | 1.5932 | 271 |
+
+With 3 000 steps on 600 documents the training loss falls far below the entropy of the
+language (0.4528), which is only possible by memorising, and the validation loss rises
+from its best value of 0.475 (step 200) to 1.59.
+
 ## What this does and does not show
 
 - It shows that the pinned pipeline (data format, tokenizer training, pretraining,
