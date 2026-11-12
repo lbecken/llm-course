@@ -1,0 +1,16 @@
+# Module 20 — Further study
+
+| Resource | Type | Level | What it contributes |
+|---|---|---|---|
+| nanochat, commits [`6ed7d1d`](https://github.com/karpathy/nanochat/commit/6ed7d1d) and [`a825e63`](https://github.com/karpathy/nanochat/commit/a825e63), the leaderboard in the [README](https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/README.md) and [`dev/LOG.md`](https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/dev/LOG.md) | source history | intermediate | The primary source for D.7: what an automated experiment workflow changed in a real training recipe, the metric it was judged by, and a log that includes negative results. |
+| Dwork et al., [*The reusable holdout: Preserving validity in adaptive data analysis*](https://www.science.org/doi/10.1126/science.aaa9375), Science 349, 2015 | paper | advanced | The formal treatment of D.4: why repeatedly consulting a holdout set while adapting to it invalidates it, and how thresholding and noise restore validity. The lab's noise threshold is a crude relative of its mechanism. |
+| Recht et al., [*Do ImageNet Classifiers Generalize to ImageNet?*](https://arxiv.org/abs/1902.10811), ICML 2019 | paper | intermediate | A measurement of what years of community-wide adaptive search against one test set did to reported accuracies: the human-scale version of an unguarded loop. |
+| Bergstra and Bengio, [*Random Search for Hyper-Parameter Optimization*](https://www.jmlr.org/papers/v13/bergstra12a.html), JMLR 13, 2012 | paper | introductory | Why random proposals are a strong baseline for hyperparameter search. Any cleverer proposer, a model included, should be compared with it at equal numbers of runs. |
+| Krakovna et al., [*Specification gaming: the flip side of AI ingenuity*](https://deepmind.google/discover/blog/specification-gaming-the-flip-side-of-ai-ingenuity/) (2020) | article | introductory | Examples of optimisers satisfying the letter of an objective, including by interfering with their own evaluation: the reason for the table in D.5. |
+| Silver et al., [*Mastering the game of Go without human knowledge*](https://www.nature.com/articles/nature24270), Nature 550, 2017 | paper | intermediate | The clearest success of level 3 (D.6): self-play improvement where the filter (the game's outcome) is exact. Read it for what made the loop sound, then ask which of those conditions hold for language tasks. |
+| Shumailov et al., [*AI models collapse when trained on recursively generated data*](https://www.nature.com/articles/s41586-024-07566-y), Nature 631, 2024 | paper | intermediate | The opposite case: training on unfiltered model outputs over generations degrades the model. Together with the previous entry it brackets D.6. |
+| Lu et al., [*The AI Scientist: Towards Fully Automated Open-Ended Scientific Discovery*](https://arxiv.org/abs/2408.06292) (2024) | paper | intermediate | An ambitious automated-research system. Useful as an exercise: apply D.5's table and D.4's defences to its described pipeline, and note what its own limitations section reports. |
+
+Historical versus current: adaptive-analysis results (2015) and random search (2012) are
+stable. Automated research systems are new and their claims are moving quickly; read
+them with this module's checklist and prefer sources that publish their ledgers.
