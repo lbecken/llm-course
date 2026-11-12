@@ -113,6 +113,9 @@ class CausalSelfAttention(nn.Module):
         self.c_v = nn.Linear(config.n_embd, self.n_kv_head * self.head_dim, bias=config.bias)
         self.c_proj = nn.Linear(config.n_embd, config.n_embd, bias=config.bias)
         self.last_weights: torch.Tensor | None = None  # filled when the model records internals
+        # Intervention hook for experiments (Module 05): a list of (query_pos, key_pos) pairs whose
+        # attention is forbidden in this layer, in addition to the causal mask. None = normal operation.
+        self.blocked_edges: list[tuple[int, int]] | None = None
 
     def forward(self, x, cache=None, record: bool = False):
         B, T, C = x.shape
@@ -147,6 +150,10 @@ class CausalSelfAttention(nn.Module):
         # 6) Scores, mask, softmax, weighted average of values.
         scores = (q @ k.transpose(-2, -1)) / math.sqrt(D)  # (B, H, T, Tk)
         mask = causal_mask(T, Tk, self.config.window, device=x.device)  # (T, Tk)
+        if self.blocked_edges:
+            mask = mask.clone()
+            for q_pos, k_pos in self.blocked_edges:
+                mask[q_pos, k_pos] = False
         scores = scores.masked_fill(~mask, float("-inf"))
         weights = torch.softmax(scores, dim=-1)  # (B, H, T, Tk) rows sum to 1
         if record:
