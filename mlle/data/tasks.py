@@ -116,3 +116,32 @@ class AdditionTask:
         """n problems; with several `ops` they alternate (problem i uses ops[i % len(ops)])."""
         rng = random.Random(f"{split}-{seed}-{self.seed}")
         return [self.sample(rng, split, ops[i % len(ops)]) for i in range(n)]
+
+
+# ----------------------------------------------------------------------------
+# Sequential arithmetic modulo a small number (Module 17)
+
+def mod_chain(rng: random.Random, n_ops: int, mod: int = 5) -> tuple[str, list[str]]:
+    """A left-to-right chain such as '3*4+2-1' with every intermediate result taken modulo
+    `mod`, and its step-by-step reduction:
+
+        '3*4+2-1'  ->  ['2+2-1', '4-1', '3']        (3*4 = 12 = 2 mod 5;  2+2 = 4;  4-1 = 3)
+
+    Each step replaces the first operation by its result and copies the rest. Because
+    multiplication is mixed with addition, the final value cannot be obtained by
+    aggregating the operands in parallel: every step depends on the previous result.
+    Returns (expression, steps); steps[-1] is the answer."""
+    nums = [rng.randint(1, mod - 1) for _ in range(n_ops + 1)]
+    ops = [rng.choice("+-*") for _ in range(n_ops)]
+    expr = str(nums[0]) + "".join(o + str(n) for o, n in zip(ops, nums[1:]))
+    steps, value = [], nums[0]
+    for i, (o, n) in enumerate(zip(ops, nums[1:])):
+        value = {"+": value + n, "-": value - n, "*": value * n}[o] % mod
+        steps.append(str(value) + "".join(oo + str(nn) for oo, nn in zip(ops[i + 1 :], nums[i + 2 :])))
+    return expr, steps
+
+
+def mod_chain_document(rng: random.Random, style: str, min_ops: int = 1, max_ops: int = 5, mod: int = 5) -> str:
+    """One training document. style 'direct': '3*4+2-1=3'. style 'scratchpad': '3*4+2-1=2+2-1=4-1=3'."""
+    expr, steps = mod_chain(rng, rng.randint(min_ops, max_ops), mod)
+    return expr + "=" + (steps[-1] if style == "direct" else "=".join(steps))
