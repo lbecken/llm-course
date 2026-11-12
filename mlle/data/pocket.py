@@ -148,3 +148,86 @@ def agreement_items(num_items: int = 200, seed: int = 7, with_attractor: bool | 
         verb = rng.choice(VERBS_INTRANSITIVE)
         items.append((prefix, verb[number], verb[1 - number]))
     return items
+
+
+# ----------------------------------------------------------------------------
+# Recognizer: is a string a sentence of the language, and how probable is it?
+
+_WORD_INFO: dict[str, tuple[str, int | None]] = {"the": ("det", None), "that": ("that", None), ".": ("stop", None)}
+for _sg, _pl in NOUNS:
+    _WORD_INFO[_sg], _WORD_INFO[_pl] = ("noun", SG), ("noun", PL)
+for _adj in ADJECTIVES:
+    _WORD_INFO[_adj] = ("adj", None)
+for _sg, _pl in VERBS_INTRANSITIVE:
+    _WORD_INFO[_sg], _WORD_INFO[_pl] = ("vi", SG), ("vi", PL)
+for _sg, _pl in VERBS_TRANSITIVE:
+    _WORD_INFO[_sg], _WORD_INFO[_pl] = ("vt", SG), ("vt", PL)
+
+
+def sentence_logprob(sentence: str) -> float | None:
+    """Exact log-probability of `sentence` under the grammar, or None if it is not a
+    sentence of the language (unknown word, wrong structure, or wrong number agreement).
+    Accepts the sentence with or without the trailing newline.
+
+    Because the grammar is unambiguous this is a deterministic left-to-right parse. It
+    gives every generated sentence a ground-truth verdict, which is what lets Module 10
+    measure the quality/diversity trade-off of decoding strategies exactly."""
+    words = sentence.strip().split(" ")
+    kinds = [_WORD_INFO.get(w) for w in words]
+    if any(k is None for k in kinds):
+        return None
+    pos = 0
+    logp = 0.0
+
+    def peek(kind: str) -> bool:
+        return pos < len(kinds) and kinds[pos][0] == kind
+
+    def noun_phrase(allow_rc: bool) -> int | None:
+        """Parse an NP starting at `pos`; return its number, or None on failure."""
+        nonlocal pos, logp
+        if not peek("det"):
+            return None
+        pos += 1
+        if peek("adj"):
+            logp += math.log(P_ADJ) - math.log(len(ADJECTIVES))
+            pos += 1
+        else:
+            logp += math.log(1 - P_ADJ)
+        if not peek("noun"):
+            return None
+        number = kinds[pos][1]
+        logp += -math.log(len(NOUNS))
+        pos += 1
+        if allow_rc:
+            if peek("that"):
+                logp += math.log(P_RC)
+                pos += 1
+                if not peek("vt") or kinds[pos][1] != number:  # RC verb agrees with the head noun
+                    return None
+                logp += -math.log(len(VERBS_TRANSITIVE))
+                pos += 1
+                logp += math.log(0.5)  # number of the inner noun
+                if noun_phrase(allow_rc=False) is None:
+                    return None
+            else:
+                logp += math.log(1 - P_RC)
+        return number
+
+    logp += math.log(0.5)  # number of the subject
+    number = noun_phrase(allow_rc=True)
+    if number is None:
+        return None
+    if peek("vi") and kinds[pos][1] == number:
+        logp += math.log(P_INTRANSITIVE) - math.log(len(VERBS_INTRANSITIVE))
+        pos += 1
+    elif peek("vt") and kinds[pos][1] == number:
+        logp += math.log(1 - P_INTRANSITIVE) - math.log(len(VERBS_TRANSITIVE))
+        pos += 1
+        logp += math.log(0.5)  # number of the object
+        if noun_phrase(allow_rc=True) is None:
+            return None
+    else:
+        return None
+    if not peek("stop") or pos != len(kinds) - 1:
+        return None
+    return logp

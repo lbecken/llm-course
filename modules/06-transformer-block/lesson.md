@@ -247,9 +247,9 @@ untied head) a block is essentially $12C^2$ and the embeddings dominate differen
 
 (From `num_scaling_params()` via [`scripts/experiments/estimate_run.py`](../../scripts/experiments/estimate_run.py).)
 Check the block term yourself: $12\times12\times768^2 = 84{,}934{,}656$, plus $6$ layers
-$\times\ 12\times 6$ gate weights. Seventy percent of this model's parameters are lookup
-tables that cost no matmul FLOPs: parameter count and compute are different things
-(Module 09).
+$\times\ 12\times 6$ gate weights. About 62 % of this model's parameters (the token
+embedding and the value embeddings) are lookup tables that cost no matmul FLOPs:
+parameter count and compute are different things (Module 09).
 
 How the parameter count moves as GPT-2 components are replaced one at a time
 (measured, toy size $V=29$, $C=48$, $L=3$):
@@ -480,7 +480,7 @@ model on a laptop to count its parameters.
 1. A Transformer is a residual stream plus $L$ blocks. Each block adds what attention gathered and what an MLP computed. Communication, computation, repeat.
 2. Residual connections give gradients an identity path through any depth; pre-norm keeps that path clean; normalization standardises what each sub-layer sees.
 3. Attention is the only step with a $T\times T$ shape; the MLP holds two thirds of each block's parameters and all of its non-linear computation on content.
-4. Parameters and compute are different: in nanochat d12, 70 % of parameters are lookup tables.
+4. Parameters and compute are different: in nanochat d12, about 62 % of parameters are lookup tables.
 5. nanochat = a modern but plain decoder (RoPE, parameter-free RMSNorm, ReLU², no biases, untied head, QK-norm, soft-capped logits) + five additions (residual scalars, value embeddings, smear, backout, plus window/GQA options). A parity test proves the list is complete.
 6. The strongest way to check an architectural description is to rebuild the model from it and compare numbers.
 

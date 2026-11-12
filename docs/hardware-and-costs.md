@@ -62,10 +62,10 @@ context: 1.96e+08 (d6), 8.87e+08 (d12), 3.24e+09 (d20).
 
 Two things worth noticing now (Module 09 explains them):
 
-- "Total parameters" is dominated by embedding tables: at depth 12, the token embedding,
-  six value-embedding tables and the output head account for about 201 M of the 286 M
-  parameters. Lookups cost no matmul FLOPs, which is why nanochat sizes the run by
-  *scaling* parameters instead.
+- "Total parameters" is dominated by embedding tables: at depth 12, the token embedding
+  and six value-embedding tables hold 176 M of the 286 M parameters (62 %). They are
+  lookups and cost no matmul FLOPs, which is why nanochat sizes the run by *scaling*
+  parameters (block matrices plus the output head) instead.
 - The reference speedrun ([`runs/speedrun.sh`](https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/runs/speedrun.sh)) trains depth 24 with
   `--target-param-data-ratio=8`, i.e. two thirds of the default budget, on eight H100s
   with FP8. None of those three conditions holds on a Spark.
