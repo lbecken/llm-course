@@ -66,7 +66,11 @@ print("\n3. model A (600 steps) versus model B (450 steps), same seed, scored on
 model_a, tok, res_a = train_model(0, 600)
 model_b, _, res_b = train_model(0, 450)
 rng = random.Random(4242)
-sentences = [pocket.sample_sentence(rng).text for _ in range(300)]
+sentences = []
+while len(sentences) < 300:  # sentences must fit into the model's 64-character window
+    text_s = pocket.sample_sentence(rng).text
+    if len(text_s) <= 60:
+        sentences.append(text_s)
 
 
 def per_sentence_nll(model) -> list[float]:
