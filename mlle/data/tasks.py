@@ -72,22 +72,25 @@ def lookup_batch(spec: LookupSpec, batch_size: int, generator: torch.Generator |
 
 @dataclass
 class AdditionProblem:
+    """An arithmetic problem a <op> b. The default operation is addition (the name is kept
+    from the modules that only add); Module 16 also uses "*"."""
     a: int
     b: int
+    op: str = "+"
 
     @property
     def question(self) -> str:
-        return f"{self.a}+{self.b}="
+        return f"{self.a}{self.op}{self.b}="
 
     @property
     def answer(self) -> str:
-        return str(self.a + self.b)
+        return str(self.a * self.b if self.op == "*" else self.a + self.b)
 
 
 class AdditionTask:
-    """Deterministic stream of addition problems with disjoint train / test splits.
+    """Deterministic stream of arithmetic problems with disjoint train / test splits.
 
-    The split is by hash of (a, b), so a test problem never appears in training: any
+    The split is by hash of (a, b, op), so a test problem never appears in training: any
     test accuracy above chance is generalisation, not memorisation."""
 
     def __init__(self, max_digits: int = 3, test_fraction: float = 0.1, seed: int = 0):
@@ -95,19 +98,21 @@ class AdditionTask:
         self.test_fraction = test_fraction
         self.seed = seed
 
-    def _is_test(self, a: int, b: int) -> bool:
-        h = (a * 1_000_003 + b * 998_244_353 + self.seed * 7919) % 1000
+    def _is_test(self, a: int, b: int, op: str = "+") -> bool:
+        h = (a * 1_000_003 + b * 998_244_353 + self.seed * 7919 + (0 if op == "+" else 31 * ord(op))) % 1000
         return h < int(self.test_fraction * 1000)
 
-    def sample(self, rng: random.Random, split: str = "train") -> AdditionProblem:
+    def sample(self, rng: random.Random, split: str = "train", op: str = "+") -> AdditionProblem:
         assert split in ("train", "test")
+        max_digits = len(str(self.max_value)) if op == "+" else 2  # products of 2-digit numbers have up to 4 digits
         while True:
             # sample the number of digits first so that short numbers are not rare
-            a = rng.randint(0, 10 ** rng.randint(1, len(str(self.max_value))) - 1)
-            b = rng.randint(0, 10 ** rng.randint(1, len(str(self.max_value))) - 1)
-            if self._is_test(a, b) == (split == "test"):
-                return AdditionProblem(a, b)
+            a = rng.randint(0, 10 ** rng.randint(1, max_digits) - 1)
+            b = rng.randint(0, 10 ** rng.randint(1, max_digits) - 1)
+            if self._is_test(a, b, op) == (split == "test"):
+                return AdditionProblem(a, b, op)
 
-    def problems(self, n: int, split: str, seed: int = 0) -> list[AdditionProblem]:
+    def problems(self, n: int, split: str, seed: int = 0, ops: tuple[str, ...] = ("+",)) -> list[AdditionProblem]:
+        """n problems; with several `ops` they alternate (problem i uses ops[i % len(ops)])."""
         rng = random.Random(f"{split}-{seed}-{self.seed}")
-        return [self.sample(rng, split) for _ in range(n)]
+        return [self.sample(rng, split, ops[i % len(ops)]) for i in range(n)]

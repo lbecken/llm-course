@@ -70,11 +70,13 @@ def addition_conversation(p: AdditionProblem, use_tool: bool = False, style: str
     return {"messages": [{"role": "user", "content": question}, {"role": "assistant", "content": answer}], "problem": p}
 
 
-def conversations(task: AdditionTask, n: int, split: str, seed: int = 0, use_tool: bool = False, long_fraction: float = 0.0) -> list[dict]:
-    """n conversations from the given split. `long_fraction` of them use the long answer style."""
+def conversations(task: AdditionTask, n: int, split: str, seed: int = 0, use_tool: bool = False, long_fraction: float = 0.0,
+                  ops: tuple[str, ...] = ("+",)) -> list[dict]:
+    """n conversations from the given split. `long_fraction` of them use the long answer
+    style; with several `ops` the operations alternate."""
     rng = random.Random(f"style-{split}-{seed}")
     return [addition_conversation(p, use_tool, "long" if rng.random() < long_fraction else "short")
-            for p in task.problems(n, split, seed)]
+            for p in task.problems(n, split, seed, ops)]
 
 
 def extract_answer(text: str) -> str:

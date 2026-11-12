@@ -24,10 +24,10 @@ from mlle.foundations.optim import lr_multiplier
 from mlle.inference.kvcache import KVCache
 
 
-def build_sft_rows(tok: ChatTokenizer, convs: list[dict], row_capacity: int):
+def build_sft_rows(tok: ChatTokenizer, convs: list[dict], row_capacity: int, supervise_tool_output: bool = False):
     """Render and pack conversations. Returns (inputs, targets), each (N_rows, row_capacity - 1).
     targets is -1 wherever the loss must be ignored (context tokens and padding)."""
-    rendered = [tok.render_conversation(c) for c in convs]
+    rendered = [tok.render_conversation(c, supervise_tool_output=supervise_tool_output) for c in convs]
     # pack ids; carry the masks along by packing index lists the same way
     order = list(range(len(rendered)))
     packed_idx, _ = pack_rows([[i] * len(rendered[i][0]) for i in order], row_capacity, pad_id=-1, strategy="bestfit_pad")

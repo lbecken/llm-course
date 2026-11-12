@@ -3,6 +3,7 @@
 import random
 
 import pytest
+import torch
 
 from mlle.agents import tools as T
 from mlle.agents.assistant import ToolAssistant
@@ -181,3 +182,97 @@ def test_experiment_loop_is_bounded_recorded_and_guarded(tmp_path):
     # a zero time budget stops immediately
     res3 = run_experiment_loop(objective, {"a": 1, "b": 10}, space, random_proposer(space), max_trials=5, max_seconds=0.0, seed=1)
     assert res3.stopped == "time_budget" and res3.trials == []
+
+
+# ----------------------------------------------------------------------------- tool use inside the token stream (Module 16)
+class _ScriptedTokenModel(torch.nn.Module):
+    """A stand-in for MiniGPT that 'generates' a fixed token script, one token per forward
+    step, regardless of what it is fed. Lets the engine's state machine be tested exactly."""
+
+    def __init__(self, tok, script: list[int]):
+        super().__init__()
+        from mlle.foundations.minigpt import MiniGPTConfig
+
+        self.config = MiniGPTConfig.nanochat_style(tok.vocab_size, block_size=64, n_layer=1, n_head=1, n_embd=8)
+        self.anchor = torch.nn.Parameter(torch.zeros(1))
+        self.script, self.vocab, self.fed = list(script), tok.vocab_size, []
+
+    def forward(self, idx, cache=None, **kw):
+        if cache is not None:
+            cache.advance(idx.shape[1])
+        self.fed.append(idx[0].tolist())
+        logits = torch.full((1, idx.shape[1], self.vocab), -10.0)
+        # the model's NEXT sampled token: one script entry per step in which it is actually asked
+        logits[0, -1, self.script[min(len(self.fed) - 1, len(self.script) - 1)]] = 10.0
+        return logits
+
+
+def _tool_setup(script_text: list):
+    from mlle.finetune.data import make_tokenizer
+
+    tok = make_tokenizer()
+    ids = []
+    for piece in script_text:
+        ids += [tok.special[piece]] if piece in tok.special else tok.encode(piece)
+    return tok, ids
+
+
+def test_engine_forces_the_calculator_result_and_masks_it():
+    from mlle.agents.tool_engine import final_answer, generate_with_tools
+
+    # what the model "wants" to say at each step; entries consumed while tokens are forced are skipped by the engine
+    tok, script = _tool_setup(["<|python_start|>", "12*12", "<|python_end|>", "x", "x", "x", "x", "x", "1", "4", "4", "<|assistant_end|>"])
+    model = _ScriptedTokenModel(tok, script)
+    tokens, mask = generate_with_tools(model, tok, [tok.get_bos_token_id()])
+    text = [tok.itos[t] for t in tokens]
+    start = text.index("<|output_start|>")
+    assert text[start : start + 5] == ["<|output_start|>", "1", "4", "4", "<|output_end|>"]
+    assert mask[start : start + 5] == [0, 0, 0, 0, 0]  # forced by the engine ...
+    assert all(m == 1 for m in mask[:start])  # ... everything before was sampled
+    assert "x" not in text  # the model's own tokens were ignored while forcing
+    assert final_answer(tok, tokens) == "144"
+    # the forced tokens were FED to the model (they are part of its context)
+    fed_flat = [t for step in model.fed[1:] for t in step]
+    assert tok.special["<|output_start|>"] in fed_flat and tok.special["<|output_end|>"] in fed_flat
+
+
+def test_engine_with_tools_disabled_or_refused_writes_no_output():
+    from mlle.agents.tool_engine import generate_with_tools
+
+    tok, script = _tool_setup(["<|python_start|>", "2+2", "<|python_end|>", "4", "<|assistant_end|>"])
+    tokens, mask = generate_with_tools(_ScriptedTokenModel(tok, script), tok, [tok.get_bos_token_id()], tools_enabled=False)
+    assert tok.special["<|output_start|>"] not in tokens and all(mask)
+
+    def refuse(expression):
+        raise ValueError("no")
+
+    tokens, mask = generate_with_tools(_ScriptedTokenModel(tok, script), tok, [tok.get_bos_token_id()], tool_fn=refuse)
+    assert tok.special["<|output_start|>"] not in tokens and all(mask)
+
+
+def test_fabricated_output_is_detected_by_the_mask():
+    """If the MODEL writes <|output_start|> itself, the token is 'sampled' (mask 1): that is how
+    an application tells a real tool result from an invented one."""
+    from mlle.agents.tool_engine import generate_with_tools, tool_chat_accuracy
+    from mlle.data.tasks import AdditionProblem
+    from mlle.finetune.data import addition_conversation
+
+    tok, script = _tool_setup(["<|output_start|>", "5", "<|output_end|>", "5", "<|assistant_end|>"])
+    model = _ScriptedTokenModel(tok, script)
+    tokens, mask = generate_with_tools(model, tok, [tok.get_bos_token_id()])
+    assert tokens[0] == tok.special["<|output_start|>"] and mask[0] == 1
+    stats = tool_chat_accuracy(_ScriptedTokenModel(tok, script), tok, [addition_conversation(AdditionProblem(2, 3))])
+    assert stats == {"accuracy": 1.0, "tool_call_rate": 0.0, "fabricated_output_rate": 1.0, "follows_tool_rate": 1.0}
+
+
+def test_multiplication_problems_and_split():
+    from mlle.data.tasks import AdditionProblem, AdditionTask
+
+    assert AdditionProblem(52, 98, "*").question == "52*98=" and AdditionProblem(52, 98, "*").answer == "5096"
+    task = AdditionTask(max_digits=3)
+    mixed = task.problems(40, "train", 0, ops=("+", "*"))
+    assert [p.op for p in mixed[:4]] == ["+", "*", "+", "*"]
+    assert all(p.a <= 99 and p.b <= 99 for p in mixed if p.op == "*")
+    test = task.problems(200, "test", 0, ops=("*",))
+    train = {(p.a, p.b) for p in task.problems(3000, "train", 0, ops=("*",))}
+    assert not any((p.a, p.b) in train for p in test)

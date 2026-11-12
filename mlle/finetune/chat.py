@@ -48,7 +48,10 @@ class ChatTokenizer:
         return "".join(self.itos[int(i)] for i in ids)
 
     # ------------------------------------------------------------------ chat rendering
-    def render_conversation(self, conversation: dict, max_tokens: int = 2048) -> tuple[list[int], list[int]]:
+    def render_conversation(self, conversation: dict, max_tokens: int = 2048, supervise_tool_output: bool = False) -> tuple[list[int], list[int]]:
+        """`supervise_tool_output=True` is a deliberate MISTAKE used in Module 16 to show what
+        happens when tool results are treated as something the model should produce."""
+        out_mask = 1 if supervise_tool_output else 0
         ids: list[int] = []
         mask: list[int] = []
 
@@ -79,9 +82,9 @@ class ChatTokenizer:
                         add(tokens, 1)
                         add(sp["<|python_end|>"], 1)
                     elif part["type"] == "python_output":  # produced by the tool at run time: not supervised
-                        add(sp["<|output_start|>"], 0)
-                        add(tokens, 0)
-                        add(sp["<|output_end|>"], 0)
+                        add(sp["<|output_start|>"], out_mask)
+                        add(tokens, out_mask)
+                        add(sp["<|output_end|>"], out_mask)
                     else:
                         raise ValueError(f"unknown part type {part['type']}")
                 add(sp["<|assistant_end|>"], 1)
