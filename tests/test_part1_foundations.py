@@ -264,3 +264,17 @@ def test_lr_schedule_shape():
     assert abs(m[0] - 1 / 40) < 1e-9 and m[39] == 1.0 and m[200] == 1.0
     assert abs(m[n] - 0.05) < 1e-9 and m[700] < 1.0
     assert all(a >= b for a, b in zip(m[350:], m[351:]))  # monotone warmdown
+
+
+# ----------------------------------------------------------------------------- Module 04 (word-level)
+def test_word_tokenizer_roundtrip_and_entropy_units():
+    from mlle.foundations.ngram import WordTokenizer
+
+    text = pocket.generate_corpus(200, seed=3)
+    tok = WordTokenizer(text)
+    ids = tok.encode(text)
+    assert tok.decode(ids) == text
+    # per-token entropy must count the newline token that ends every sentence
+    H = pocket.entropy_rate(4000)
+    tokens_per_sentence = len(ids) / 200
+    assert abs(H["nats_per_sentence"] / H["nats_per_word"] - tokens_per_sentence) < 0.5

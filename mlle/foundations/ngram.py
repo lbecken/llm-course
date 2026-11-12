@@ -96,3 +96,33 @@ class NGramLM:
 def perplexity(cross_entropy_nats: float) -> float:
     """exp(cross-entropy): the size of a uniform distribution that is equally uncertain."""
     return math.exp(cross_entropy_nats)
+
+
+class WordTokenizer:
+    """Whitespace word-level tokenizer for the Pocket language: one token per word, plus
+    the newline that ends each sentence. Used in Module 04, where whole-word embeddings
+    make the geometry of the embedding space easy to inspect."""
+
+    def __init__(self, text: str):
+        self.words = sorted(set(self._split(text)))
+        self.stoi = {w: i for i, w in enumerate(self.words)}
+        self.itos = {i: w for w, i in self.stoi.items()}
+
+    @staticmethod
+    def _split(text: str) -> list[str]:
+        out = []
+        for line in text.split("\n"):
+            if line:
+                out.extend(line.split(" "))
+                out.append("\n")
+        return out
+
+    @property
+    def vocab_size(self) -> int:
+        return len(self.words)
+
+    def encode(self, text: str) -> list[int]:
+        return [self.stoi[w] for w in self._split(text)]
+
+    def decode(self, ids) -> str:
+        return " ".join(self.itos[int(i)] for i in ids).replace(" \n ", "\n").replace(" \n", "\n")

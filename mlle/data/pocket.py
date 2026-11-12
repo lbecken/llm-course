@@ -117,13 +117,13 @@ def entropy_rate(num_samples: int = 20000, seed: int = 123) -> dict:
         sent = sample_sentence(rng)
         total_nll += -sent.logprob
         total_chars += len(sent.text)
-        total_words += len(sent.text.split())
+        total_words += len(sent.text.split()) + 1  # words, the full stop, and the newline that ends the sentence
     return {
         "nats_per_sentence": total_nll / num_samples,
         "chars_per_sentence": total_chars / num_samples,
         "nats_per_char": total_nll / total_chars,
         "bits_per_char": total_nll / total_chars / math.log(2),
-        "nats_per_word": total_nll / total_words,
+        "nats_per_word": total_nll / total_words,  # per token of mlle.foundations.ngram.WordTokenizer
     }
 
 
