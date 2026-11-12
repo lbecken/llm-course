@@ -1,0 +1,15 @@
+# Module 14 — Further study
+
+| Resource | Type | Level | What it contributes |
+|---|---|---|---|
+| nanochat, [`nanochat/tokenizer.py`](https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/tokenizer.py) (`render_conversation`) and [`scripts/chat_sft.py`](https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/scripts/chat_sft.py) | source code | intermediate | The primary source for section F: a complete chat format, mask, mixture and SFT loop in two files. |
+| Ouyang et al., [*Training language models to follow instructions with human feedback*](https://arxiv.org/abs/2203.02155) (InstructGPT), NeurIPS 2022 | paper | intermediate | The pipeline that made "base model → supervised fine-tuning on demonstrations → preference-based training" standard. Sections 3.1–3.5 for the SFT stage; the rest belongs to Module 15. |
+| Wei et al., [*Finetuned Language Models Are Zero-Shot Learners*](https://arxiv.org/abs/2109.01652) (FLAN), ICLR 2022 | paper | intermediate | Instruction tuning on a mixture of tasks improves behaviour on unseen tasks: the evidence for mixtures as in D.5. |
+| Hu et al., [*LoRA: Low-Rank Adaptation of Large Language Models*](https://arxiv.org/abs/2106.09685), ICLR 2022 | paper | intermediate | The source of D.6. Read section 4 (method) and 7 (which matrices, which rank): its finding that small ranks on attention projections suffice is for large models and natural-language tasks, and this module's lab shows a case where it does not transfer. |
+| Kirkpatrick et al., [*Overcoming catastrophic forgetting in neural networks*](https://arxiv.org/abs/1612.00796), PNAS 2017 | paper | advanced | A clear statement of the forgetting problem and one family of remedies (penalising movement of important weights). Useful background; replay and mixtures are the more common practice for language models. |
+| Luo et al., [*An Empirical Study of Catastrophic Forgetting in Large Language Models During Continual Fine-tuning*](https://arxiv.org/abs/2308.08747) (2023) | paper | intermediate | Measurements of forgetting in instruction-tuned language models: evidence that the effect of D.4 is not an artefact of small models. |
+| Hugging Face, [*Chat templates*](https://huggingface.co/docs/transformers/chat_templating) | documentation | introductory | How other model families render conversations (different special tokens, system roles, generation prompts). Read it to see that the format is a convention fixed at fine-tuning time, and that using the wrong template silently degrades a model. |
+| Hugging Face PEFT, [*LoRA conceptual guide*](https://huggingface.co/docs/peft/conceptual_guides/lora) | documentation | introductory | The practical vocabulary (target modules, rank, alpha, merging, modules to save) for using adapters in a widely used library, including the need to train embeddings when tokens are added. |
+
+Historical versus current: the SFT recipe and LoRA are stable. Chat *formats* differ
+between model families and versions; always take the template from the model you use.

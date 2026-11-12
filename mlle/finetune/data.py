@@ -53,18 +53,30 @@ def documents_to_stream(tok: ChatTokenizer, docs: list[str]) -> torch.Tensor:
     return torch.tensor(ids, dtype=torch.long)
 
 
-def addition_conversation(p: AdditionProblem, use_tool: bool = False) -> dict:
+LONG_PREFIX = "it is "  # the "long" answer style: "it is 85" instead of "85"
+
+
+def addition_conversation(p: AdditionProblem, use_tool: bool = False, style: str = "short") -> dict:
     question = p.question[:-1]  # "47+38" without the "="
+    final = p.answer if style == "short" else LONG_PREFIX + p.answer
     if not use_tool:
-        answer = p.answer
+        answer = final
     else:
         answer = [
             {"type": "python", "text": question},
             {"type": "python_output", "text": p.answer},
-            {"type": "text", "text": p.answer},
+            {"type": "text", "text": final},
         ]
     return {"messages": [{"role": "user", "content": question}, {"role": "assistant", "content": answer}], "problem": p}
 
 
-def conversations(task: AdditionTask, n: int, split: str, seed: int = 0, use_tool: bool = False) -> list[dict]:
-    return [addition_conversation(p, use_tool) for p in task.problems(n, split, seed)]
+def conversations(task: AdditionTask, n: int, split: str, seed: int = 0, use_tool: bool = False, long_fraction: float = 0.0) -> list[dict]:
+    """n conversations from the given split. `long_fraction` of them use the long answer style."""
+    rng = random.Random(f"style-{split}-{seed}")
+    return [addition_conversation(p, use_tool, "long" if rng.random() < long_fraction else "short")
+            for p in task.problems(n, split, seed)]
+
+
+def extract_answer(text: str) -> str:
+    """The answer proper, whatever the style: the last space-separated piece of the reply."""
+    return text.split(" ")[-1]

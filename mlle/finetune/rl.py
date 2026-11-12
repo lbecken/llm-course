@@ -61,8 +61,9 @@ def reinforce_step(model, optimizer, batches) -> dict:
     """One policy-gradient update from a list of (inputs, targets, rewards) rollout batches."""
     model.train()
     optimizer.zero_grad()
-    total_reward, n = 0.0, 0
+    total_reward, n, informative = 0.0, 0, 0
     for inputs, targets, rewards in batches:
+        informative += int(rewards.max() != rewards.min())  # all-equal rewards => zero advantage => no gradient
         advantages = rewards - rewards.mean()  # baseline = mean reward of this prompt's samples
         logp = -model(inputs, targets, loss_reduction="none").view_as(inputs)  # (K, T); 0 where target == -1
         objective = (logp * advantages[:, None]).sum() / (targets >= 0).sum().clamp(min=1)
@@ -72,7 +73,7 @@ def reinforce_step(model, optimizer, batches) -> dict:
     torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
     optimizer.step()
     model.eval()
-    return {"mean_reward": total_reward / n}
+    return {"mean_reward": total_reward / n, "informative_prompts": informative / len(batches)}
 
 
 def reinforce_train(model, tok: ChatTokenizer, convs: list[dict], reward_fn: Callable = reward_exact, steps: int = 100,
@@ -97,4 +98,5 @@ def reinforce_train(model, tok: ChatTokenizer, convs: list[dict], reward_fn: Cal
         stats = reinforce_step(model, opt, batches)
         if history:
             history[-1].setdefault("train_reward", stats["mean_reward"])
+            history[-1].setdefault("informative_prompts", stats["informative_prompts"])
     return history

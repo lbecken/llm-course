@@ -19,6 +19,7 @@ import torch
 
 from mlle.data.packing import pack_rows
 from mlle.finetune.chat import ChatTokenizer
+from mlle.finetune.data import extract_answer
 from mlle.foundations.optim import lr_multiplier
 from mlle.inference.kvcache import KVCache
 
@@ -112,12 +113,13 @@ def complete(model, prompt_ids: list[int], stop_ids: set[int], max_new_tokens: i
 
 
 def chat_accuracy(model, tok: ChatTokenizer, convs: list[dict], max_new_tokens: int = 12) -> float:
-    """Exact-match accuracy of greedy chat completions against the reference answers."""
+    """Exact-match accuracy of greedy chat completions against the reference answers
+    (the answer is the last space-separated piece of the reply, so both answer styles count)."""
     stop = {tok.encode_special("<|assistant_end|>"), tok.get_bos_token_id()}
     correct = 0
     for conv in convs:
         out = complete(model, tok.render_for_completion(conv), stop, max_new_tokens)[0]
-        correct += tok.decode(out) == conv["problem"].answer
+        correct += extract_answer(tok.decode(out)) == conv["problem"].answer
     return correct / len(convs)
 
 

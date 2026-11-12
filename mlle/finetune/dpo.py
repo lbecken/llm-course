@@ -31,11 +31,37 @@ def sequence_logprob(model, prompt: list[int], answer: list[int]) -> torch.Tenso
     return -model(ids[:, :-1], targets, loss_reduction="sum")
 
 
-def dpo_loss(model, reference, prompt, preferred, rejected, beta: float = 1.0) -> torch.Tensor:
+def dpo_loss(model, reference, prompt, preferred, rejected, beta: float = 1.0, sft_weight: float = 0.0) -> torch.Tensor:
+    """The DPO loss for one triple. `sft_weight` > 0 adds an anchor, -sft_weight * log pi(preferred):
+    the plain DPO loss constrains only the DIFFERENCE between the two answers, so both
+    log-probabilities are free to fall together ("likelihood displacement"); the anchor
+    forbids that for the preferred one."""
     with torch.no_grad():
         ref_w, ref_l = sequence_logprob(reference, prompt, preferred), sequence_logprob(reference, prompt, rejected)
     pol_w, pol_l = sequence_logprob(model, prompt, preferred), sequence_logprob(model, prompt, rejected)
-    return -F.logsigmoid(beta * ((pol_w - ref_w) - (pol_l - ref_l)))
+    return -F.logsigmoid(beta * ((pol_w - ref_w) - (pol_l - ref_l))) - sft_weight * pol_w
+
+
+@torch.no_grad()
+def mean_logprobs(model, pairs: list[tuple], n: int = 100) -> tuple[float, float]:
+    """(mean log pi(preferred), mean log pi(rejected)) over the first n triples."""
+    lw = sum(sequence_logprob(model, p, yw).item() for p, yw, _ in pairs[:n]) / min(n, len(pairs))
+    ll = sum(sequence_logprob(model, p, yl).item() for p, _, yl in pairs[:n]) / min(n, len(pairs))
+    return lw, ll
+
+
+def make_style_pairs(tok: ChatTokenizer, convs: list[dict], prefer: str = "long") -> list[tuple]:
+    """(prompt, preferred, rejected) expressing a STYLE preference: the same correct answer
+    in the long form ("it is 85") versus the short form ("85")."""
+    from mlle.finetune.data import LONG_PREFIX
+
+    end = tok.encode_special("<|assistant_end|>")
+    pairs = []
+    for conv in convs:
+        short = tok.encode(conv["problem"].answer) + [end]
+        long = tok.encode(LONG_PREFIX + conv["problem"].answer) + [end]
+        pairs.append((tok.render_for_completion(conv),) + ((long, short) if prefer == "long" else (short, long)))
+    return pairs
 
 
 def make_preference_pairs(tok: ChatTokenizer, convs: list[dict], seed: int = 0) -> list[tuple]:
@@ -52,7 +78,8 @@ def make_preference_pairs(tok: ChatTokenizer, convs: list[dict], seed: int = 0) 
     return pairs
 
 
-def dpo_train(model, pairs: list[tuple], steps: int = 200, batch_size: int = 16, lr: float = 1e-3, beta: float = 1.0, seed: int = 0):
+def dpo_train(model, pairs: list[tuple], steps: int = 200, batch_size: int = 16, lr: float = 1e-3, beta: float = 1.0,
+              sft_weight: float = 0.0, seed: int = 0):
     reference = copy.deepcopy(model).eval()
     for p in reference.parameters():
         p.requires_grad_(False)
@@ -63,7 +90,7 @@ def dpo_train(model, pairs: list[tuple], steps: int = 200, batch_size: int = 16,
     for step in range(steps):
         for group in opt.param_groups:
             group["lr"] = lr * (1.0 - step / steps)
-        loss = torch.stack([dpo_loss(model, reference, *rng.choice(pairs), beta=beta) for _ in range(batch_size)]).mean()
+        loss = torch.stack([dpo_loss(model, reference, *rng.choice(pairs), beta=beta, sft_weight=sft_weight) for _ in range(batch_size)]).mean()
         opt.zero_grad()
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
