@@ -5,8 +5,8 @@
 ### Exercise 1: sizing a cache
 
 1. $20 \times 2 \times 10 \times 128 \times 2 = 102\,400$ bytes per token. For 2 048 tokens: 209 715 200 bytes = **209.7 MB** (200 MiB).
-2. $(24 - 1.8)\ \text{GB} / 0.2097\ \text{GB} = 105.9$, so **105** conversations. The weights are shared by all of them; the caches are not. (The d20 weight figure: 896.5 M parameters × 2 bytes = 1.79 GB.)
-3. With two key/value heads: $20\times2\times2\times128\times2 = 20\,480$ bytes per token, 41.9 MB per conversation, **529** conversations. A fivefold reduction in the quantity that limits concurrency, at a quality cost that must be measured (Module 12 does, on a small model).
+2. $(24 - 2.7)\ \text{GB} / 0.2097\ \text{GB} = 101.6$, so **101** conversations. The weights are shared by all of them; the caches are not. (The d20 weight figure: 461 M embedding and value-embedding parameters × 2 bytes + 435 M matrix parameters × 4 bytes = 2.66 GB.)
+3. With two key/value heads: $20\times2\times2\times128\times2 = 20\,480$ bytes per token, 41.9 MB per conversation, **507** conversations. A fivefold reduction in the quantity that limits concurrency, at a quality cost that must be measured (Module 12 does, on a small model).
 4. Naive: step $i$ (from 0) processes $1000 + i$ positions: $\sum_{i=0}^{999}(1000+i) = 1\,000\,000 + 499\,500 = $ **1 499 500**. Cached: the prompt once, then each sampled token fed back except the last: $1000 + 999 = $ **1 999**. Ratio 750.
 
 A wrong approach worth naming: sizing the cache from the *parameter count*. The cache does

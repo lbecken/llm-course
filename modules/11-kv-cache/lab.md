@@ -12,7 +12,7 @@ Solutions: [`solutions/11-kv-cache.md`](../../solutions/11-kv-cache.md)
 nanochat d20 has 20 layers, 10 heads of dimension 128 (no GQA) and caches in bf16.
 
 1. Bytes per cached token? Megabytes for one 2 048-token conversation?
-2. A serving machine has 24 GB of GPU memory; the d20 weights occupy about 1.8 GB in bf16. Ignoring every other overhead, how many full-context conversations fit at once?
+2. A serving machine has 24 GB of GPU memory; the d20 weights occupy about 2.7 GB as nanochat stores them (embedding tables in bf16, matrices in fp32). Ignoring every other overhead, how many full-context conversations fit at once?
 3. The same model with `n_kv_head = 2` (GQA): redo items 1 and 2.
 4. The naive generator needs no cache. How many positions does it process to generate 1 000 tokens after a 1 000-token prompt? How many does the cached generator process?
 
@@ -57,7 +57,7 @@ cd external/nanochat && python -m pytest tests/test_engine.py -q
 2. In [`Engine.generate`](https://github.com/karpathy/nanochat/blob/92d63d4e8bb4df75c3b71618f31ddde2378b2bcd/nanochat/engine.py#L176-L275), find the two `KVCache(...)` constructions. What are their batch sizes and sequence lengths, and why are two caches used instead of one?
 3. `KVCache.get_pos()` returns `cache_seqlens[0]`. State the assumption this makes. Give a serving scenario in which it would be false, and what would have to change.
 4. Read `test_multi_sample_first_token_diversity` in `tests/test_engine.py`. What bug does it guard against, and why would that bug be invisible in a single-sample test?
-5. *(GPU only.)* Run `python -m scripts.infer_bench --model-tag <tag> --decode-batch-sizes 1,4,16`. Record TTFT, TPOT and tokens/s per batch size. Does total throughput scale linearly with batch size?
+5. *(GPU only.)* Run `python -m scripts.infer_bench -i base -g <tag> --batch-sizes 1,4,16`. Record TTFT, TPOT and tokens/s per batch size. Does total throughput scale linearly with batch size?
 
 **Success criterion:** `Match: True`, the engine tests pass, and written answers to items 1–4. Item 5: *awaiting validation on GPU, no reference values.*
 
