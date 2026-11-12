@@ -26,6 +26,8 @@ from mlle.nanochat_bridge import PINNED_SHA, nanochat_dir  # noqa: E402
 SKIP_DIRS = {"external", ".git", ".venv", "venv", "node_modules", "results/runs"}
 LINK_RE = re.compile(r"(?<!\!)\[[^\]]*\]\(([^)\s]+)\)")
 REF_DEF_RE = re.compile(r"^\[[^\]]+\]:\s*(\S+)", re.M)
+NANOCHAT_TESTS = {"tests/test_engine.py", "tests/test_attention_fallback.py", "tests/test_optim.py",
+                  "tests/test_tokenizer.py", "tests/test_execution.py", "tests/test_tasks.py"}
 UPSTREAM_RE = re.compile(r"https://github\.com/karpathy/nanochat/(blob|tree)/([0-9a-f]{7,40})/([^\s)#>\]]*)(?:#L(\d+)(?:-L(\d+))?)?")
 PATH_RE = re.compile(r"`((?:labs|mlle|scripts|tests|projects|docs|modules|solutions|results|resources|instructor|diagrams)/[A-Za-z0-9_./\-]+)`")
 PLACEHOLDER_RE = re.compile(r"\b(TODO|TBD|FIXME|XXX)\b")
@@ -99,6 +101,8 @@ def main():
                 continue  # the learner's own outputs (git-ignored)
             if re.fullmatch(r"scripts/[a-z_]+\.py", candidate):
                 continue  # nanochat's scripts live directly in scripts/; course scripts are in sub-folders
+            if candidate in NANOCHAT_TESTS and (not have_upstream or (upstream / candidate).exists()):
+                continue  # nanochat's own test files, referred to by their path inside external/nanochat
             if not (ROOT / candidate).exists():
                 errors.append(f"{rel}: path does not exist -> {path}")
 

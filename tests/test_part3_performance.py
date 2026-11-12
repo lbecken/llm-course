@@ -79,3 +79,20 @@ def test_harness_basics():
     assert 0 < t["min_s"] <= t["median_s"] <= t["max_s"]
     assert peak_rss_bytes() > 1_000_000
     assert markdown_table([{"a": 1, "b": 2.5}], ["a", "b"]).count("\n") == 2
+
+
+@pytest.mark.slow
+def test_benchmark_suite_quick_mode_passes_its_own_correctness_checks(tmp_path):
+    import json
+    import subprocess
+    import sys
+
+    from mlle.utils import REPO_ROOT
+
+    script = REPO_ROOT / "scripts" / "benchmarks" / "run_all.py"
+    out = subprocess.run([sys.executable, str(script), "--quick", "--out-dir", str(tmp_path)], capture_output=True, text=True)
+    assert out.returncode == 0, out.stdout + out.stderr
+    records = [json.loads(line) for line in (tmp_path / "benchmarks.jsonl").read_text().splitlines()]
+    assert len(records) == 7 and all(r["ok"] for r in records)
+    assert all(r["ratio"] > 0 and "env" in r for r in records)
+    assert (tmp_path / "benchmarks.md").read_text().count("|") > 50
