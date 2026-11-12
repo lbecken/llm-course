@@ -106,7 +106,8 @@ def run_agent(env: Environment, policy: Policy, max_steps: int = 20, max_seconds
 
 REACT_TEMPLATE = """Goal: {goal}
 Legal actions: {actions}
-History:
+Current state: {state}
+Recent history:
 {history}
 Reply in exactly this format:
 Thought: <one sentence>
@@ -117,14 +118,19 @@ _THOUGHT_RE = re.compile(r"Thought:\s*(.+)")
 
 
 def react_policy(llm: LLM, history_limit: int = 6) -> Policy:
-    """Build a policy that shows the model the goal, the legal actions and the recent history,
-    and parses 'Thought: ... / Action: ...' from its reply. `history_limit` is the context
-    management: only the most recent steps are shown."""
+    """Build a policy that shows the model the goal, the legal actions, the current state and
+    the recent history, and parses 'Thought: ... / Action: ...' from its reply.
+
+    `history_limit` is the context management: only the most recent steps are shown. The
+    CURRENT STATE is passed separately and always: a truncated history can consist entirely
+    of error messages, and a model that cannot see where it is cannot act (an earlier
+    version of this function had exactly that bug)."""
 
     def policy(goal: str, history: list[Step], actions: list[str]) -> tuple[str, str]:
         shown = history[-history_limit:]
         lines = "\n".join(f"  {s.index}. action={s.action} -> {s.observation}" for s in shown)
-        reply = llm.complete(REACT_TEMPLATE.format(goal=goal, actions=", ".join(actions), history=lines), max_tokens=64)
+        state = next(s.observation for s in reversed(history) if s.status != "invalid")  # last real observation
+        reply = llm.complete(REACT_TEMPLATE.format(goal=goal, actions=", ".join(actions), state=state, history=lines), max_tokens=64)
         thought = (_THOUGHT_RE.search(reply) or [None, ""])[1].strip() if _THOUGHT_RE.search(reply) else ""
         match = _ACTION_RE.search(reply)
         return thought, (match.group(1).strip() if match else reply.strip())

@@ -307,3 +307,18 @@ def test_voting_helps_random_errors_and_not_systematic_ones():
     sys_vote = R.run_benchmark(R.self_consistency, NoisySolver(systematic=1.0, seed=0), problems, k=15)["accuracy"]
     sys_direct = R.run_benchmark(R.direct, NoisySolver(systematic=1.0, seed=0), problems)["accuracy"]
     assert sys_vote == sys_direct  # the same wrong answer every time: nothing to vote away
+
+
+def test_react_prompt_keeps_the_current_state_when_history_is_all_errors():
+    """Regression: with a short history window and several invalid actions in a row, the model
+    must still be shown where it is."""
+    prompts = []
+
+    def stubborn(prompt):  # always replies with an illegal action
+        prompts.append(prompt)
+        return "Thought: hm\nAction: teleport"
+
+    ep = run_agent(NumberGame(5, 26), react_policy(ScriptedLLM(fn=stubborn), history_limit=2), max_steps=10, max_invalid=5)
+    assert ep.outcome == "too_many_invalid" and len(prompts) == 5
+    assert all("Current state: value=5" in p for p in prompts)
+    assert "value=5" not in prompts[-1].split("Recent history:")[1]  # the history window no longer contains it

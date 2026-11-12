@@ -53,8 +53,7 @@ class SimulatedReActLLM:
         self.calls += 1
         goal = re.search(r"Goal: (.*)", prompt).group(1)
         actions = [a.strip() for a in re.search(r"Legal actions: (.*)", prompt).group(1).split(",")]
-        history = prompt.split("History:")[1]
-        last_obs = [ln for ln in history.splitlines() if "->" in ln and "invalid action" not in ln][-1]
+        last_obs = re.search(r"Current state: (.*)", prompt).group(1)
         roll = self.rng.random()
         if roll < self.mistake_rate / 3:
             return "I think we should try something else."  # malformed: no Action line
