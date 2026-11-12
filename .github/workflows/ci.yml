@@ -1,0 +1,42 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  cpu-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install (CPU-only PyTorch)
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[dev]"
+      - name: Unit tests (no GPU, no nanochat checkout)
+        run: python -m pytest -m "not gpu and not nanochat"
+      - name: Documentation checks (links and repository paths)
+        run: python scripts/diagnostics/check_links.py --no-upstream
+
+  nanochat-parity:
+    # Checks the course against the pinned upstream revision on CPU. No training, no GPU.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Pinned nanochat environment (CPU) + course package
+        run: scripts/setup/setup_env.sh cpu
+      - name: Parity tests and source-reference checks
+        run: |
+          source external/nanochat/.venv/bin/activate
+          python -m pytest tests/test_nanochat_parity.py -m nanochat
+          python scripts/diagnostics/check_links.py
