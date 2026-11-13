@@ -69,7 +69,9 @@ def open_docs(r, n, mismatch):
 
 print(f"training three models (2 layers x 96, {STEPS} steps each) ...", flush=True)
 r = random.Random(1)
-models = {"closed-book": train_model([f"q.{k}={old_table[k]}" for k in KEYS for _ in range(400)]),
+closed_docs = [f"q.{k}={old_table[k]}" for k in KEYS for _ in range(400)]
+r.shuffle(closed_docs)  # without this, the held-out tail of the stream would contain ALL documents of the last keys
+models = {"closed-book": train_model(closed_docs),
           "open-book": train_model(open_docs(r, 30000, 0.0)),
           "open-book, checking": train_model(open_docs(r, 30000, 0.3))}
 
