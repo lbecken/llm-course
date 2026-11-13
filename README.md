@@ -92,8 +92,11 @@ instructor/   teaching guide, assessments, rubrics
 
 ## Status
 
-See [PROGRESS.md](PROGRESS.md) for the implementation manifest, the validation status of
-every part, and the list of GPU-dependent claims awaiting confirmation on a DGX Spark.
+All 22 modules, the labs, solutions, assessments, capstones and the resource library are
+complete, and every lab was executed on CPU by the author; nothing was run on a GPU or a
+DGX Spark. See [PROGRESS.md](PROGRESS.md) for the implementation manifest, the
+verification performed, and the list of GPU-dependent claims awaiting confirmation.
+[COURSE_MAP.md](COURSE_MAP.md) is the one-page index.
 
 ## Attribution and license
 
