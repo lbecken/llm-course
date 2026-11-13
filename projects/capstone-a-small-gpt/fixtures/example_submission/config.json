@@ -1,0 +1,8 @@
+{
+  "model": {"style": "nanochat", "vocab_size": 25, "block_size": 64, "n_layer": 2, "n_head": 2, "n_embd": 64},
+  "training": {"steps": 1500, "batch_size": 32, "lr": 0.003, "optimizer": "adamw"},
+  "data": "20 000 Pocket sentences, mlle.data.pocket.generate_corpus(20000, seed=0)",
+  "seed": 0,
+  "course_commit": "example fixture (not a real submission)",
+  "command": "python labs/foundations/07_train_minigpt.py --style nanochat --steps 1500"
+}

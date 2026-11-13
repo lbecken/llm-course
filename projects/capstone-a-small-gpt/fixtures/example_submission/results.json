@@ -1,0 +1,10 @@
+{
+  "final_val_loss": 0.3481,
+  "reference": {"name": "entropy floor of Pocket", "value": 0.3139, "unit": "nats/char"},
+  "seeds": [0, 1, 2],
+  "val_loss_per_seed": [0.3481, 0.3481, 0.3481],
+  "note": "FIXTURE: only seed 0 was measured (0.3481, results/reference/minigpt-pocket-cpu.md); the other two entries repeat it so that the file format can be demonstrated. A real submission must contain three measured seeds.",
+  "ablation": {"name": "example only", "prediction": "example only", "value": 0.0},
+  "hardware": "4-vCPU x86-64 sandbox, no GPU",
+  "measured_on": "2026-11-11"
+}
